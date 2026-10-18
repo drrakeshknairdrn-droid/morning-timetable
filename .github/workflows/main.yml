@@ -15,12 +15,12 @@ jobs:
         include:
           - os: windows-latest
             name: Windows installer
-            command: npx electron-builder --win
+            command: npx electron-builder --win --publish never
             files: dist/*.exe
             artifact: morning-timetable-windows
           - os: macos-latest
             name: Mac installer
-            command: npx electron-builder --mac
+            command: npx electron-builder --mac --publish never
             files: dist/*.dmg
             artifact: morning-timetable-mac
     steps:
