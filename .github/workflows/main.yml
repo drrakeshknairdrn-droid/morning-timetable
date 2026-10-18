@@ -25,6 +25,16 @@ jobs:
             artifact: morning-timetable-mac
     steps:
       - uses: actions/checkout@v4
+      - name: Arrange files
+        shell: bash
+        run: |
+          mkdir -p www build assets
+          if [ -f index.html ]; then mv index.html www/index.html; fi
+          if [ -f icon.png ]; then mv icon.png build/icon.png; fi
+          for f in icon-only.png icon-foreground.png icon-background.png splash.png splash-dark.png; do
+            if [ -f "$f" ]; then mv "$f" assets/; fi
+          done
+          ls -R www build assets
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -42,6 +52,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Arrange files
+        shell: bash
+        run: |
+          mkdir -p www build assets
+          if [ -f index.html ]; then mv index.html www/index.html; fi
+          if [ -f icon.png ]; then mv icon.png build/icon.png; fi
+          for f in icon-only.png icon-foreground.png icon-background.png splash.png splash-dark.png; do
+            if [ -f "$f" ]; then mv "$f" assets/; fi
+          done
+          ls -R www build assets
       - uses: actions/setup-node@v4
         with:
           node-version: 20
