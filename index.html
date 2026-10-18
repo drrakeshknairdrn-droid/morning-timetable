@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Morning Timetable</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+
+html { -webkit-text-size-adjust: 100%; }
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+/* Layout concept: one narrow column. A live answer ("what is my first class?") on top,
+   a Mon-Sun strip below it, then the day as a time-led list, like a printed school diary. */
+:root {
+  --bg: #F2F4F9;
+  --surface: #FFFFFF;
+  --ink: #14213D;
+  --muted: #5A6784;
+  --line: #D8DEEA;
+  --accent: #2B4BD6;
+  --on-accent: #FFFFFF;
+  --hl: #FFE066;
+  --hl-ink: #14213D;
+  --danger: #B3261E;
+  --sat: 62%;
+  --lit: 44%;
+  --font-display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1525; --surface: #172036; --ink: #E8EDFA; --muted: #9AA7C4; --line: #2A3654;
+    --accent: #93A8FF; --on-accent: #0E1525; --hl: #F2D14B; --hl-ink: #14213D; --danger: #FF8A80;
+    --sat: 70%; --lit: 66%; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1525; --surface: #172036; --ink: #E8EDFA; --muted: #9AA7C4; --line: #2A3654;
+  --accent: #93A8FF; --on-accent: #0E1525; --hl: #F2D14B; --hl-ink: #14213D; --danger: #FF8A80;
+  --sat: 70%; --lit: 66%; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-block: 20px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.app { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: transparent; padding: 6px 12px; font-size: 0.82rem; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+.hero { display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { margin: 0; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.hero h1 {
+  margin: 0; font-family: var(--font-display); font-weight: 800; letter-spacing: -0.03em;
+  font-size: clamp(2rem, 7.5vw, 2.9rem); line-height: 1.05; text-wrap: balance;
+}
+.hero .sub { margin: 0; color: var(--muted); font-size: 1rem; text-wrap: pretty; }
+
+.week-wrap { overflow-x: auto; }
+.week { display: flex; gap: 6px; min-width: 0; }
+.day {
+  flex: 1 1 0; min-width: 44px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 0 7px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); position: relative;
+}
+.day .dn { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.day .dd { font-family: var(--font-mono); font-size: 1rem; }
+.day .count { font-size: 0.68rem; color: var(--muted); }
+.day[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.day[aria-pressed="true"] .dn, .day[aria-pressed="true"] .count { color: var(--bg); opacity: 0.8; }
+.day.today::after { content: ""; position: absolute; top: 5px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.day.today[aria-pressed="true"]::after { background: var(--hl); }
+
+.banner {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px;
+  padding: 10px 14px; border: 1px dashed var(--line); border-radius: 10px; font-size: 0.9rem; color: var(--muted);
+}
+.banner p { margin: 0; min-width: 0; flex: 1 1 220px; }
+
+.list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.row { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 12px; align-items: start; }
+.time { display: flex; flex-direction: column; padding-top: 14px; font-family: var(--font-mono); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.time .t1 { color: var(--ink); }
+.time .t2 { color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.card .head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: hsl(var(--h) var(--sat) var(--lit)); }
+.card h3 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.12rem; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 0.88rem; color: var(--muted); }
+.tag { align-self: flex-start; font-size: 0.74rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 6px; background: var(--line); color: var(--muted); }
+.row.now .card { background: var(--hl); border-color: var(--hl); color: var(--hl-ink); }
+.row.now .meta { color: var(--hl-ink); opacity: 0.8; }
+.row.now .tag { background: var(--hl-ink); color: var(--hl); }
+.row.now .time .t1 { font-weight: 600; }
+.row.next .tag { background: var(--accent); color: var(--on-accent); }
+.row.done .card, .row.done .time { opacity: 0.55; }
+.bar { height: 5px; border-radius: 3px; background: rgba(20, 33, 61, 0.18); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--hl-ink); transition: width 0.4s; }
+.actions { display: flex; gap: 8px; margin-top: 4px; }
+
+.empty { border: 1px dashed var(--line); border-radius: 12px; padding: 24px 16px; text-align: center; color: var(--muted); }
+.empty p { margin: 0; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 14px; font-weight: 600; font-size: 0.9rem; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.danger { color: var(--danger); }
+.btn.small { padding: 4px 10px; font-size: 0.82rem; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+
+form.editor { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+form.editor h2 { grid-column: 1 / -1; margin: 0; font-family: var(--font-display); font-size: 1.15rem; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field.wide, .err, .form-actions, fieldset { grid-column: 1 / -1; }
+.field label, legend { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+input[type="text"], input[type="time"], textarea {
+  width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; background: var(--bg); min-width: 0;
+}
+fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+fieldset legend { padding: 0; margin-bottom: 6px; }
+.chk { position: relative; }
+.chk input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.chk span { display: block; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 0.88rem; font-weight: 600; background: var(--bg); color: var(--muted); }
+.chk input:checked + span { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chk input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.err { margin: 0; color: var(--danger); font-size: 0.9rem; }
+.form-actions { display: flex; gap: 8px; }
+
+details { border-top: 1px solid var(--line); padding-top: 14px; }
+summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
+details .inner { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+details p { margin: 0; color: var(--muted); font-size: 0.88rem; }
+textarea { font-family: var(--font-mono); font-size: 0.78rem; min-height: 120px; resize: vertical; }
+.note { min-height: 1.3em; font-size: 0.88rem; }
+
+@media (max-width: 460px) {
+  .row { grid-template-columns: 70px minmax(0, 1fr); gap: 8px; }
+  .time { font-size: 0.76rem; }
+  form.editor { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+
+</head>
+<body>
+<main class="app">
+  <div class="topbar">
+    <span class="brand">Morning Timetable</span>
+    <div class="seg" role="group" aria-label="Time format">
+      <button type="button" id="fmt12" aria-pressed="true">12 h</button>
+      <button type="button" id="fmt24" aria-pressed="false">24 h</button>
+    </div>
+  </div>
+
+  <section class="hero" aria-live="polite">
+    <p class="eyebrow" id="eyebrow"></p>
+    <h1 id="headline"></h1>
+    <p class="sub" id="subline"></p>
+  </section>
+
+  <div class="week-wrap"><div class="week" id="week" role="group" aria-label="Choose a day"></div></div>
+
+  <div id="banner"></div>
+  <ul class="list" id="list"></ul>
+  <div id="formHost"></div>
+
+  <div class="toolbar">
+    <button type="button" class="btn primary" id="addBtn">Add a class</button>
+    <button type="button" class="btn" id="editBtn" aria-pressed="false">Edit classes</button>
+  </div>
+
+  <details id="backup">
+    <summary>Backup and restore</summary>
+    <div class="inner">
+      <p>Your timetable is saved in this browser only. Copy the backup text and keep it somewhere safe, or paste a backup here to restore it on another device.</p>
+      <textarea id="bk" aria-label="Backup text" spellcheck="false"></textarea>
+      <div class="toolbar">
+        <button type="button" class="btn" id="copyBk">Copy backup</button>
+        <button type="button" class="btn" id="restoreBk">Restore from this text</button>
+      </div>
+      <p class="note" id="bkNote" role="status"></p>
+    </div>
+  </details>
+</main>
+
+<script>
+(function () {
+  var KEY = 'morning-timetable-v1';
+  var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+  var state = { classes: [], use24: false, examples: false };
+  var sel = new Date().getDay();
+  var editing = false;
+  var pendingDelete = null;
+  var deleteTimer = null;
+
+  function uid() { return Math.random().toString(36).slice(2, 10); }
+
+  function sample() {
+    var rows = [
+      [1, '08:30', '09:20', 'Mathematics', 'Room 204', 'Mr. Rao'],
+      [1, '09:30', '10:20', 'Physics', 'Lab 1', 'Dr. Iyer'],
+      [1, '10:40', '11:30', 'English', 'Room 110', 'Ms. Dsouza'],
+      [1, '11:30', '12:20', 'Computer Science', 'Room 305', 'Mr. Khan'],
+      [1, '13:10', '14:00', 'Chemistry', 'Room 204', 'Dr. Mehta'],
+      [2, '08:30', '09:20', 'Chemistry', 'Lab 2', 'Dr. Mehta'],
+      [2, '09:30', '10:20', 'Mathematics', 'Room 204', 'Mr. Rao'],
+      [2, '10:40', '11:30', 'Hindi', 'Room 108', 'Mrs. Sharma'],
+      [2, '11:30', '12:20', 'Physics', 'Room 207', 'Dr. Iyer'],
+      [3, '08:30', '09:20', 'English', 'Room 110', 'Ms. Dsouza'],
+      [3, '09:30', '10:20', 'Computer Science', 'Lab 3', 'Mr. Khan'],
+      [3, '10:40', '11:30', 'Mathematics', 'Room 204', 'Mr. Rao'],
+      [3, '11:30', '12:20', 'Physical Education', 'Ground', 'Mr. Singh'],
+      [3, '13:10', '14:00', 'Physics', 'Room 207', 'Dr. Iyer'],
+      [4, '08:30', '09:20', 'Physics', 'Room 207', 'Dr. Iyer'],
+      [4, '09:30', '10:20', 'Hindi', 'Room 108', 'Mrs. Sharma'],
+      [4, '10:40', '11:30', 'Chemistry', 'Room 204', 'Dr. Mehta'],
+      [4, '11:30', '12:20', 'Mathematics', 'Room 204', 'Mr. Rao'],
+      [5, '08:30', '09:20', 'Mathematics', 'Room 204', 'Mr. Rao'],
+      [5, '09:30', '10:20', 'English', 'Room 110', 'Ms. Dsouza'],
+      [5, '10:40', '12:20', 'Computer Science', 'Lab 3', 'Mr. Khan'],
+      [5, '13:10', '14:00', 'Hindi', 'Room 108', 'Mrs. Sharma']
+    ];
+    return rows.map(function (r) {
+      return { id: uid(), day: r[0], start: r[1], end: r[2], subject: r[3], room: r[4], teacher: r[5] };
+    });
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var s = JSON.parse(raw);
+        if (s && Array.isArray(s.classes)) {
+          state.classes = s.classes;
+          state.use24 = !!s.use24;
+          state.examples = !!s.examples;
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  function h(tag, props) {
+    var e = document.createElement(tag);
+    props = props || {};
+    Object.keys(props).forEach(function (k) {
+      var v = props[k];
+      if (k === 'class') e.className = v;
+      else if (k === 'text') e.textContent = v;
+      else if (k.indexOf('on') === 0) e.addEventListener(k.slice(2), v);
+      else if (v === true) e.setAttribute(k, '');
+      else if (v !== false && v != null) e.setAttribute(k, v);
+    });
+    for (var i = 2; i < arguments.length; i++) {
+      var kids = [].concat(arguments[i]);
+      kids.forEach(function (c) {
+        if (c == null || c === false) return;
+        e.append(c.nodeType ? c : document.createTextNode(c));
+      });
+    }
+    return e;
+  }
+
+  function toMin(t) { var p = t.split(':'); return +p[0] * 60 + +p[1]; }
+  function fromMin(m) { m = ((m % 1440) + 1440) % 1440; return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmt(t) {
+    if (state.use24) return t;
+    var p = t.split(':'); var hr = +p[0];
+    return (hr % 12 || 12) + ':' + p[1] + ' ' + (hr >= 12 ? 'PM' : 'AM');
+  }
+  function dur(min) {
+    if (min < 60) return min + ' min';
+    var hr = Math.floor(min / 60), m = min % 60;
+    return hr + ' h' + (m ? ' ' + m + ' min' : '');
+  }
+  function hue(s) {
+    var x = 0; s = s.toLowerCase();
+    for (var i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) % 360;
+    return x;
+  }
+  function dayClasses(d) {
+    return state.classes.filter(function (c) { return c.day === d; })
+      .sort(function (a, b) { return toMin(a.start) - toMin(b.start); });
+  }
+  function nowMin() { var n = new Date(); return n.getHours() * 60 + n.getMinutes(); }
+  function status(c, nm) {
+    if (nm < toMin(c.start)) return 'up';
+    if (nm < toMin(c.end)) return 'now';
+    return 'done';
+  }
+  function nextDayInfo(from) {
+    for (var i = 1; i <= 7; i++) {
+      var d = (from + i) % 7;
+      var list = dayClasses(d);
+      if (list.length) {
+        return (i === 1 ? 'Tomorrow' : DAY_NAMES[d]) + ' starts at ' + fmt(list[0].start) + ' with ' + list[0].subject + '.';
+      }
+    }
+    return null;
+  }
+
+  function greeting(hr) {
+    if (hr < 12) return 'Good morning';
+    if (hr < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  function renderHero() {
+    var now = new Date();
+    var today = now.getDay();
+    var nm = nowMin();
+    var list = dayClasses(sel);
+    var eyebrow = $('eyebrow'), head = $('headline'), sub = $('subline');
+
+    if (sel !== today) {
+      eyebrow.textContent = 'Viewing';
+      head.textContent = DAY_NAMES[sel];
+      sub.textContent = list.length
+        ? list.length + (list.length === 1 ? ' class' : ' classes') + ' · ' + fmt(list[0].start) + ' to ' + fmt(list[list.length - 1].end)
+        : 'No classes on this day.';
+      return;
+    }
+
+    eyebrow.textContent = greeting(now.getHours()) + ' · ' + DAY_SHORT[today] + ' ' + now.getDate() + ' ' + MONTHS[now.getMonth()];
+    if (!list.length) {
+      head.textContent = 'No classes today';
+      sub.textContent = nextDayInfo(today) || 'Add your first class to get started.';
+      return;
+    }
+    var cur = null, nxt = null;
+    list.forEach(function (c) {
+      var s = status(c, nm);
+      if (s === 'now' && !cur) cur = c;
+      if (s === 'up' && !nxt) nxt = c;
+    });
+    if (cur) {
+      head.textContent = cur.subject + ' until ' + fmt(cur.end);
+      sub.textContent = nxt
+        ? 'Next: ' + nxt.subject + (nxt.room ? ' in ' + nxt.room : '') + ' at ' + fmt(nxt.start) + '.'
+        : 'This is the last class of the day.';
+    } else if (nxt) {
+      var first = nxt === list[0];
+      head.textContent = (first ? 'First class at ' : 'Next class at ') + fmt(nxt.start);
+      sub.textContent = nxt.subject + (nxt.room ? ' in ' + nxt.room : '') + (nxt.teacher ? ' with ' + nxt.teacher : '') + '. Starts in ' + dur(toMin(nxt.start) - nm) + '.';
+    } else {
+      head.textContent = 'Done for today';
+      sub.textContent = nextDayInfo(today) || 'No more classes on your timetable.';
+    }
+  }
+
+  function renderWeek() {
+    var box = $('week');
+    box.replaceChildren();
+    var now = new Date();
+    var today = now.getDay();
+    var monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((today + 6) % 7));
+    ORDER.forEach(function (d, i) {
+      var date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+      var n = dayClasses(d).length;
+      var b = h('button', {
+        type: 'button',
+        class: 'day' + (d === today ? ' today' : ''),
+        'aria-pressed': String(d === sel),
+        'aria-label': DAY_NAMES[d] + ' ' + date.getDate() + (d === today ? ', today' : '') + ', ' + n + ' classes',
+        onclick: function () { sel = d; cancelDelete(); closeForm(); renderAll(); }
+      },
+        h('span', { class: 'dn', text: DAY_SHORT[d] }),
+        h('span', { class: 'dd', text: String(date.getDate()) }),
+        h('span', { class: 'count', text: n ? String(n) : '–' })
+      );
+      box.append(b);
+    });
+  }
+
+  function renderBanner() {
+    var host = $('banner');
+    host.replaceChildren();
+    if (!state.examples) return;
+    host.append(h('div', { class: 'banner' },
+      h('p', { text: 'These are example classes so you can see how it works. Clear them, then add your own.' }),
+      h('button', {
+        type: 'button', class: 'btn small', text: 'Clear examples',
+        onclick: function () { state.classes = []; state.examples = false; save(); renderAll(); }
+      })
+    ));
+  }
+
+  function cancelDelete() { pendingDelete = null; clearTimeout(deleteTimer); }
+
+  function renderList() {
+    var ul = $('list');
+    ul.replaceChildren();
+    var list = dayClasses(sel);
+    var isToday = sel === new Date().getDay();
+    var nm = nowMin();
+
+    if (!list.length) {
+      ul.append(h('li', { class: 'empty' }, h('p', { text: 'No classes on ' + DAY_NAMES[sel] + '. Use "Add a class" below.' })));
+      return;
+    }
+
+    var nextId = null;
+    if (isToday) {
+      for (var i = 0; i < list.length; i++) { if (status(list[i], nm) === 'up') { nextId = list[i].id; break; } }
+    }
+
+    list.forEach(function (c) {
+      var st = isToday ? status(c, nm) : null;
+      var cls = 'row' + (st === 'now' ? ' now' : '') + (st === 'done' ? ' done' : '') + (c.id === nextId ? ' next' : '');
+      var tag = null;
+      if (st === 'now') tag = 'Now · ' + dur(toMin(c.end) - nm) + ' left';
+      else if (c.id === nextId) tag = 'Next · in ' + dur(toMin(c.start) - nm);
+      else if (st === 'done') tag = 'Done';
+
+      var meta = h('div', { class: 'meta' },
+        c.room ? h('span', { text: c.room }) : null,
+        c.teacher ? h('span', { text: c.teacher }) : null,
+        h('span', { text: dur(toMin(c.end) - toMin(c.start)) })
+      );
+
+      var card = h('div', { class: 'card' },
+        h('div', { class: 'head' },
+          h('span', { class: 'dot', style: '--h:' + hue(c.subject) }),
+          h('h3', { text: c.subject })
+        ),
+        meta,
+        tag ? h('span', { class: 'tag', text: tag }) : null
+      );
+
+      if (st === 'now') {
+        var pct = Math.max(0, Math.min(100, ((nm - toMin(c.start)) / (toMin(c.end) - toMin(c.start))) * 100));
+        card.append(h('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(Math.round(pct)) }, h('i', { style: 'width:' + pct + '%' })));
+      }
+
+      if (editing) {
+        var confirming = pendingDelete === c.id;
+        card.append(h('div', { class: 'actions' },
+          h('button', { type: 'button', class: 'btn small', text: 'Edit', onclick: function () { openForm(c); } }),
+          h('button', {
+            type: 'button', class: 'btn small danger', text: confirming ? 'Confirm delete' : 'Delete',
+            onclick: function () {
+              if (pendingDelete === c.id) {
+                state.classes = state.classes.filter(function (x) { return x.id !== c.id; });
+                cancelDelete(); save(); renderAll();
+              } else {
+                cancelDelete(); pendingDelete = c.id;
+                deleteTimer = setTimeout(function () { pendingDelete = null; renderList(); }, 3500);
+                renderList();
+              }
+            }
+          })
+        ));
+      }
+
+      ul.append(h('li', { class: cls },
+        h('div', { class: 'time' },
+          h('span', { class: 't1', text: fmt(c.start) }),
+          h('span', { class: 't2', text: fmt(c.end) })
+        ),
+        card
+      ));
+    });
+  }
+
+  function closeForm() { $('formHost').replaceChildren(); }
+
+  function openForm(c) {
+    var isEdit = !!c;
+    var list = dayClasses(sel);
+    var defStart = '09:00', defEnd = '09:50';
+    if (!isEdit && list.length) {
+      var last = list[list.length - 1];
+      defStart = fromMin(toMin(last.end) + 10);
+      defEnd = fromMin(toMin(last.end) + 60);
+    }
+    var v = c || { subject: '', start: defStart, end: defEnd, room: '', teacher: '' };
+
+    var err = h('p', { class: 'err', role: 'alert', hidden: true });
+    var daysField = null;
+    if (!isEdit) {
+      daysField = h('fieldset', null, h('legend', { text: 'Repeats on' }),
+        ORDER.map(function (d) {
+          return h('label', { class: 'chk' },
+            h('input', { type: 'checkbox', id: 'f-day-' + d, name: 'days', value: String(d), checked: d === sel }),
+            h('span', { text: DAY_SHORT[d] })
+          );
+        })
+      );
+    }
+
+    var form = h('form', { class: 'editor', novalidate: true },
+      h('h2', { text: isEdit ? 'Edit ' + DAY_NAMES[c.day] + ' class' : 'Add a class' }),
+      h('div', { class: 'field wide' }, h('label', { for: 'f-subject', text: 'Subject' }),
+        h('input', { type: 'text', id: 'f-subject', value: v.subject, placeholder: 'e.g. Mathematics', autocomplete: 'off' })),
+      h('div', { class: 'field' }, h('label', { for: 'f-start', text: 'Starts' }),
+        h('input', { type: 'time', id: 'f-start', value: v.start })),
+      h('div', { class: 'field' }, h('label', { for: 'f-end', text: 'Ends' }),
+        h('input', { type: 'time', id: 'f-end', value: v.end })),
+      h('div', { class: 'field' }, h('label', { for: 'f-room', text: 'Room (optional)' }),
+        h('input', { type: 'text', id: 'f-room', value: v.room || '', placeholder: 'e.g. Room 204', autocomplete: 'off' })),
+      h('div', { class: 'field' }, h('label', { for: 'f-teacher', text: 'Teacher (optional)' }),
+        h('input', { type: 'text', id: 'f-teacher', value: v.teacher || '', placeholder: 'e.g. Mr. Rao', autocomplete: 'off' })),
+      daysField,
+      err,
+      h('div', { class: 'form-actions' },
+        h('button', { type: 'submit', class: 'btn primary', text: isEdit ? 'Save changes' : 'Add class' }),
+        h('button', { type: 'button', class: 'btn', text: 'Cancel', onclick: closeForm })
+      )
+    );
+
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var subject = form.querySelector('#f-subject').value.trim();
+      var start = form.querySelector('#f-start').value;
+      var end = form.querySelector('#f-end').value;
+      var room = form.querySelector('#f-room').value.trim();
+      var teacher = form.querySelector('#f-teacher').value.trim();
+      var msg = '';
+      if (!subject) msg = 'Enter a subject name.';
+      else if (!start || !end) msg = 'Set both a start and an end time.';
+      else if (toMin(end) <= toMin(start)) msg = 'The end time must be after the start time.';
+      var days = [];
+      if (!isEdit) {
+        form.querySelectorAll('input[name="days"]').forEach(function (i) { if (i.checked) days.push(+i.value); });
+        if (!msg && !days.length) msg = 'Pick at least one day.';
+      }
+      if (msg) { err.textContent = msg; err.hidden = false; return; }
+
+      if (isEdit) {
+        c.subject = subject; c.start = start; c.end = end; c.room = room; c.teacher = teacher;
+      } else {
+        days.forEach(function (d) {
+          state.classes.push({ id: uid(), day: d, start: start, end: end, subject: subject, room: room, teacher: teacher });
+        });
+        if (days.indexOf(sel) === -1) sel = days[0];
+      }
+      save(); closeForm(); renderAll();
+    });
+
+    var host = $('formHost');
+    host.replaceChildren(form);
+    form.querySelector('#f-subject').focus();
+    form.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function $(id) { return document.getElementById(id); }
+
+  function renderAll() {
+    $('fmt12').setAttribute('aria-pressed', String(!state.use24));
+    $('fmt24').setAttribute('aria-pressed', String(state.use24));
+    $('editBtn').setAttribute('aria-pressed', String(editing));
+    $('editBtn').textContent = editing ? 'Done editing' : 'Edit classes';
+    renderHero();
+    renderWeek();
+    renderBanner();
+    renderList();
+  }
+
+  function backupText() { return JSON.stringify(state.classes, null, 1); }
+
+  function validClass(c) {
+    return c && typeof c.subject === 'string' && c.subject &&
+      Number.isInteger(c.day) && c.day >= 0 && c.day <= 6 &&
+      /^\d\d:\d\d$/.test(c.start || '') && /^\d\d:\d\d$/.test(c.end || '');
+  }
+
+  $('fmt12').addEventListener('click', function () { state.use24 = false; save(); renderAll(); });
+  $('fmt24').addEventListener('click', function () { state.use24 = true; save(); renderAll(); });
+  $('addBtn').addEventListener('click', function () { openForm(null); });
+  $('editBtn').addEventListener('click', function () { editing = !editing; cancelDelete(); renderAll(); });
+
+  $('backup').addEventListener('toggle', function () {
+    if ($('backup').open) { $('bk').value = backupText(); $('bkNote').textContent = ''; }
+  });
+  $('copyBk').addEventListener('click', function () {
+    var ta = $('bk'), note = $('bkNote');
+    ta.value = backupText();
+    function fallback() { ta.focus(); ta.select(); note.textContent = 'Select and copy the text above.'; }
+    try {
+      navigator.clipboard.writeText(ta.value).then(function () { note.textContent = 'Backup copied.'; }, fallback);
+    } catch (e) { fallback(); }
+  });
+  $('restoreBk').addEventListener('click', function () {
+    var note = $('bkNote');
+    try {
+      var data = JSON.parse($('bk').value);
+      if (data && !Array.isArray(data) && Array.isArray(data.classes)) data = data.classes;
+      if (!Array.isArray(data) || !data.every(validClass)) throw new Error('bad');
+      state.classes = data.map(function (c) {
+        return { id: uid(), day: c.day, start: c.start, end: c.end, subject: String(c.subject), room: String(c.room || ''), teacher: String(c.teacher || '') };
+      });
+      state.examples = false;
+      save(); renderAll();
+      note.textContent = 'Restored ' + state.classes.length + ' classes.';
+    } catch (e) {
+      note.textContent = 'That text is not a valid backup. Paste the full backup text and try again.';
+    }
+  });
+
+  if (!load()) { state.classes = sample(); state.examples = true; save(); }
+  renderAll();
+  setInterval(function () { renderHero(); renderList(); }, 30000);
+})();
+</script>
+
+</body>
+</html>
