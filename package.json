@@ -1,0 +1,45 @@
+{
+  "name": "morning-timetable",
+  "version": "1.0.0",
+  "description": "A student's morning timetable: first class, what's on now, what's next.",
+  "main": "main.js",
+  "author": "Morning Timetable",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.morningtimetable.app",
+    "productName": "Morning Timetable",
+    "artifactName": "Morning-Timetable-${version}-${os}-${arch}.${ext}",
+    "files": ["main.js", "www/**/*"],
+    "directories": { "output": "dist", "buildResources": "build" },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.education",
+      "identity": null,
+      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }]
+    }
+  }
+}
